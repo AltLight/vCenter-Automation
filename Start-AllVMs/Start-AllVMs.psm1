@@ -69,6 +69,7 @@ function Start-AllVMs
     $TimeStamp = { Get-Date -Format HH:mm:ss }
     $TotalVMs = $VMs.count
     $StartCount = 0
+    [string]$ToolPassVaule = 'toolsOk'
     # Set the max number of VMs that can be processed at a time 
     # NOTE: The max processes is found by using .count on this variable, all integers defined in this variable should equal the max number of VM's that can be processed
     $MaxVMProcesses = 0..2
@@ -90,18 +91,10 @@ function Start-AllVMs
                         $vmToWaitOn = $VMs[$vmWaitCounter].name
                         $toolsStatus = Get-vmToolStatus -vmName $vmToWaitOn
 
-                        if ($toolsStatus -eq ‘toolsOk’)
+                        if ($toolsStatus -eq $ToolPassVaule)
                         {
-                            try
-                            {
-                                $StartCount--
-                                Write-Host "[INFO] [$(&$TimeStamp)] $vmToWaitOn has been powered on..." -ForegroundColor green
-                            }
-                            catch
-                            {
-                                $ModuleError = Get-ModuleErrors -ModuleName $ModuleName -ModuleError $_.exception.message
-                                $ErrorArray += $ModuleError
-                            }
+                            $StartCount--
+                            Write-Host "[INFO] [$(&$TimeStamp)] $vmToWaitOn has been powered on..." -ForegroundColor green
                         }
                         else
                         {
@@ -109,13 +102,20 @@ function Start-AllVMs
                         }
                     }
                 } 
-                while ( $StartCount -lt $MaxVMProcesses.count )
+                while ( $StartCount -ge $MaxVMProcesses.count )
             }
-
             $vmName = $vm.name
-            Get-VM $vmName | Start-VM -Confirm:$false -RunAsync | Out-Null
-            Write-Host "[INFO] [$(&$TimeStamp)] $vmName is being powered on..." -ForegroundColor Cyan
-            $StartCount++
+            try
+            {
+                Get-VM $vmName | Start-VM -Confirm:$false -RunAsync | Out-Null
+                Write-Host "[INFO] [$(&$TimeStamp)] $vmName is being powered on..." -ForegroundColor Cyan
+                $StartCount++   
+            }
+            catch
+            {
+                $ModuleError = Get-ModuleErrors -ModuleName $ModuleName -ModuleError $_.exception.message
+                $ErrorArray += $ModuleError
+            }
         }
     }
     $LastVM = $VMs[$vmCounter].name

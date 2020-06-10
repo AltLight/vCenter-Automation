@@ -42,7 +42,7 @@ function Get-VMMasterInfo
     [string]$VMMasterFileName = 'VM-Master.csv'
     $TimeStamp = { Get-Date -Format HH:mm:ss }
 
-    $DataPaths = $env:PSModulePath.Split(';') | ForEach-Object -Process 
+    $DataPaths = $env:PSModulePath.Split(';') | ForEach-Object -Process `
     { 
         if (test-path -Path ($_ + "\$VMMasterFileName")) 
         { 

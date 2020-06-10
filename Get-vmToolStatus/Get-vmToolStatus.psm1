@@ -50,7 +50,7 @@ function Get-vmToolStatus
     )
     [CmdletBinding]
 
-    [string]$ToolPassVaule = ‘toolsOk’
+    [string]$ToolPassVaule = 'toolsOk'
 
     if ($WaitForFinish) 
     {
