@@ -33,53 +33,58 @@ Version:
 1.0
 #>
 
-function Get-VMMasterInfo {
+function Get-VMMasterInfo 
+{
     param()
     [CmdletBinding]
 
     # Set module variable(s):
-    $VMMasterFileName = 'VM-Master.csv'
-    
-    <# 
-    Search all PowerShell module paths for the VM-Master File, if multiple found prompt user to select
-    the correct location to use:
-    #>
-    $DataPaths = $env:PSModulePath.Split(';') | ForEach-Object -Process { 
-        if (test-path -Path ($_ + "\$VMMasterFileName")) { 
+    [string]$VMMasterFileName = 'VM-Master.csv'
+    $TimeStamp = { Get-Date -Format HH:mm:ss }
+
+    $DataPaths = $env:PSModulePath.Split(';') | ForEach-Object -Process 
+    { 
+        if (test-path -Path ($_ + "\$VMMasterFileName")) 
+        { 
             $_ + "\$VMMasterFileName"
         }
     }
 
-    # Populate data based on user choice if multiple matches are found:
-    if ($DataPaths.Count -gt 1) {
-        # Create an array of all locations with a number the user can select:
+    if ($DataPaths.Count -gt 1) 
+    {
         [array]$FoundLocations = @()
-        $FoundLocationsCount = 0
+        [int]$FoundLocationsCount = 0
         
-        foreach ($location in $DataPaths) {
+        foreach ($location in $DataPaths) 
+        {
             $FoundLocationsCount++
             $FoundLocations += "$FoundLocationsCount | $location"
         }
 
-        # Create prompt and ask user which location to use
-        $Prompt = "$VMMasterFileName was found in multiple locations, `nselect the one that should be used: `n$FoundLocations"
+        $Prompt = "$VMMasterFileName was found in multiple locations, `nselect the one that should be used: `n$($FoundLocations | Out-String)"
         $UserLocationChoice = Read-Host -Prompt $Prompt
-        do {
-            Write-Host "User selection is invalid,`n$Prompt"
+        while (($UserLocationChoice -gt ($DataPaths.Count + 1 )) -or ($UserLocationChoice -le 0))
+        {
+            Write-Host "`n[ERROR] [$(&$TimeStamp)] | User selection is invalid!"
+            try
+            {
+                [ValidatePattern('^[0-9]')]$UserLocationChoice = Read-Host -Prompt $Prompt
+            }
+            catch
+            {
+                $UserLocationChoice = 0
+            }
         }
-        while (($UserLocationChoice -notmatch '^[0-9]') -and ([int]$UserLocationChoice -gt ($DataPaths.Count + 1 )) -and ([int]$UserLocationChoice -le 0))
         
-        # Populate Return Information based on the users choice:
         $ReturnData = Get-Content -Raw -Path $DataPaths[($UserLocationChoice - 1)] | ConvertFrom-Csv
     }
-    # Populate data if only one match found:
-    elseif ($DataPaths.count -eq 1) {
+    elseif ($DataPaths.count -eq 1) 
+    {
         $ReturnData = Get-Content -Raw -Path $DataPaths | ConvertFrom-Csv
     }
-    # Populate data if no matches are found:
-    else {
+    else 
+    {
         $ReturnData = $null
     }
-    # Return Data:
     Return $ReturnData
 }
