@@ -98,7 +98,7 @@ function Get-vCenterConnection {
                 Break
             }
             $creds = Get-Credential -Message $CredsMessage -UserName $Username
-            Connect-VIServer $vcenter -Credential $creds -ErrorAction Stop
+            Connect-VIServer $vcenter -Credential $creds -InformationAction Ignore -ErrorAction Stop | Out-Null
             $ConnectionCheck = $global:DefaultVIServers.Count + $AddConnectionCount
         }
         catch
