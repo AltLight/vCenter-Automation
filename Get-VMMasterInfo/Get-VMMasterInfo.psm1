@@ -36,7 +36,6 @@ Version:
 function Get-VMMasterInfo 
 {
     param()
-    [CmdletBinding]
 
     # Set module variable(s):
     [string]$VMMasterFileName = 'VM-Master.csv'

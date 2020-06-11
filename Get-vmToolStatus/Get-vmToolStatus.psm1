@@ -48,7 +48,6 @@ function Get-vmToolStatus
         [Parameter(Mandatory = $False)]
         [switch]$WaitForFinish
     )
-    [CmdletBinding]
 
     [string]$ToolPassVaule = 'toolsOk'
 
@@ -58,18 +57,19 @@ function Get-vmToolStatus
         {
             $toolsStatus = (Get-VM $vmName | Get-View).Guest.ToolsStatus
             Start-Sleep -Seconds 10
-        } until ($toolsStatus -eq $ToolPassVaule)
+        } 
+        until ($toolsStatus -eq $ToolPassVaule)
     }
     else 
     {
         $toolsStatus = (Get-VM $vmName | Get-View).Guest.ToolsStatus
         if ($toolsStatus -eq $ToolPassVaule) 
         {
-            Return $toolsStatus
+            Return $true
         }
         else 
         {
-            Return $null
+            Return $false
         }
     }
 }

@@ -47,7 +47,11 @@ function Start-AllVMs
     param(
         $PassedVMdata
     )
-    [CmdletBinding]
+    
+    if ($false -eq (Get-vCenterConnection))
+    {
+        Break
+    }
     
     # Set Module Variables:
     if ($PassedVMdata) 
@@ -57,27 +61,31 @@ function Start-AllVMs
     else 
     {
         $VMs = Get-VMMasterInfo
-        if ($null -eq $VMs) 
+        if (($null -eq $VMs) -or ($VMs.count -eq 0))
         {
-            Write-Host "[ERROR] [$(&$TimeStamp)] | No default VM Master File could be found, please use the 'vmName' parameter or place the VM-Master.csv file in the appropaite location and try again.`nAborting Operation(s)"  -ForegroundColor Red
+            Write-Host "[ERROR] [$(&$TimeStamp)] | No default VM Master File could be found, please use the 'vmName' parameter or place the VM-Master.csv file in the appropaite location and try again.            `nAborting Operation(s)"  -ForegroundColor Red
             Break
         }
     }
     [string]$ModuleName = 'Start-AllVMs'
     [array]$ErrorArray = @()
+    [array]$ChangedVMs = @()
     [int]$vmCounter = 0
     $TimeStamp = { Get-Date -Format HH:mm:ss }
     $TotalVMs = $VMs.count
     $StartCount = 0
-    [string]$ToolPassVaule = 'toolsOk'
-    # Set the max number of VMs that can be processed at a time 
-    # NOTE: The max processes is found by using .count on this variable, all integers defined in this variable should equal the max number of VM's that can be processed
-    $MaxVMProcesses = 0..2
+    <# Set the max number of VMs that can be processed at a time 
+    NOTE: The max processes is found by using .count on this variable,
+    all integers defined in this variable should equal the max number
+    of VM's that can be processed
+    #>
+     $MaxVMProcesses = 0..2
 
     foreach ($vm in $VMs) 
     {
-        $vmCounter++
-        Write-Progress -Activity "Powering On All VM's" -Status "Percent Complete" -CurrentOperation $VMs[$vmCounter] -PercentComplete ([int]$vmCounter / [int]$TotalVMs * 100 )
+        [string]$vmName = $vm.name
+        $vm = Get-VM $vmName
+        Write-Progress -Id 1 -Activity "Powering On All VM's" -Status "Powering on vm $($vmCounter + 1) of $TotalVMs" -PercentComplete ([int]$vmCounter / [int]$TotalVMs * 100 )
         if ($vm.PowerState -eq 'PoweredOff') 
         {
             if ($StartCount -ge $MaxVMProcesses.count) 
@@ -88,41 +96,53 @@ function Start-AllVMs
                     foreach ($vmProcess in $MaxVMProcesses)
                     {
                         $vmWaitCounter = $vmCounter - $vmProcess
+                        if ($vmWaitCounter -lt $vmProcess) {
+                            $vmWaitCounter = $vmCounter
+                        }
                         $vmToWaitOn = $VMs[$vmWaitCounter].name
                         $toolsStatus = Get-vmToolStatus -vmName $vmToWaitOn
 
-                        if ($toolsStatus -eq $ToolPassVaule)
+                        if ($true -eq $toolsStatus)
                         {
                             $StartCount--
-                            Write-Host "[INFO] [$(&$TimeStamp)] $vmToWaitOn has been powered on..." -ForegroundColor green
                         }
                         else
                         {
+                            $vmToWaitOn = $VMs[($vmWaitCounter -1)].name
+                            Write-Progress -Id 2 -ParentId 1 -Activity "[$(&$TimeStamp)]" -Status "Waiting for $vmToWaitOn to finish fully booting before powering $vmName on..."
                             Start-Sleep -Seconds 10
                         }
                     }
                 } 
                 while ( $StartCount -ge $MaxVMProcesses.count )
             }
-            $vmName = $vm.name
+            
             try
             {
                 Get-VM $vmName | Start-VM -Confirm:$false -RunAsync | Out-Null
-                Write-Host "[INFO] [$(&$TimeStamp)] $vmName is being powered on..." -ForegroundColor Cyan
+                $ChangedVMs += "At $(&$TimeStamp) Powered on $vmName"
                 $StartCount++   
             }
             catch
             {
-                $ModuleError = Get-ModuleErrors -ModuleName $ModuleName -ModuleError $_.exception.message
+                $ErrorMsg = "$vmName |" + $_.exception.message
+                $ModuleError = Get-ModuleErrors -ModuleName $ModuleName -ModuleError $ErrorMsg
                 $ErrorArray += $ModuleError
             }
         }
+        $vmCounter++
     }
-    $LastVM = $VMs[$vmCounter].name
-    Get-vmToolStatus -vmName $LastVM -WaitForFinish
+    $vmCounter--
+    Get-vmToolStatus -vmName $VMs[$vmCounter].name -WaitForFinish
 
     if (0 -ne $ErrorArray.Count)
     {
         $ErrorArray | Format-Table -AutoSize -Wrap
+    }
+    
+    if (0 -ne $ChangedVMs.Count)
+    {
+        Write-Host "`n[INFO] [$(&$TimeStamp)] |The Following VM's were powered on:`n" -ForegroundColor Cyan
+        $ChangedVMs | Format-Table -AutoSize -Wrap
     }
 }

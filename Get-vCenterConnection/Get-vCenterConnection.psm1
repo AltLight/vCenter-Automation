@@ -56,7 +56,6 @@ function Get-vCenterConnection {
         [switch]$UseLocalAdmin,
         [string]$vcsaName
     )
-    [CmdletBinding]
     
     [int]$AttemptCounter = 0
     [int]$MaxAttempts = 2
@@ -107,5 +106,5 @@ function Get-vCenterConnection {
             $AttemptCounter++
         }
     }
-    Return $True
+    Return $true
 }
